@@ -1,0 +1,69 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "google_connections",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "operatorId", "order": "ASCENDING" },
+        { "fieldPath": "googleSubjectId", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "google_connections",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "googleSubjectId", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "ga4_properties",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "operatorId", "order": "ASCENDING" },
+        { "fieldPath": "propertyId", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "ga4_properties",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "operatorId", "order": "ASCENDING" },
+        { "fieldPath": "connectionId", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "ga4_accounts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "operatorId", "order": "ASCENDING" },
+        { "fieldPath": "connectionId", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "ads_customers",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "operatorId", "order": "ASCENDING" },
+        { "fieldPath": "customerId", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "ads_customers",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "operatorId", "order": "ASCENDING" },
+        { "fieldPath": "connectionId", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "ads_hierarchy_edges",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "operatorId", "order": "ASCENDING" },
+        { "fieldPath": "connectionId", "order": "ASCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}
