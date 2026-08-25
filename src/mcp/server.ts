@@ -12,6 +12,7 @@ import {
 } from "@/mcp/http";
 import { wwwAuthenticateHeader } from "@/mcp/oauth/metadata";
 import { registerAdsTools } from "@/mcp/tools/ads";
+import { registerDv360Tools } from "@/mcp/tools/dv360";
 import { registerDisconnectConnectionTool } from "@/mcp/tools/disconnect-connection";
 import { registerGetActivePropertyTool } from "@/mcp/tools/get-active-property";
 import { registerGetOperatorTool } from "@/mcp/tools/get-operator";
@@ -60,6 +61,7 @@ function createInnerHandler() {
       registerRunReportTool(server);
       registerRealtimeTool(server);
       registerAdsTools(server);
+      registerDv360Tools(server);
     },
     {
       serverInfo: {
@@ -67,7 +69,7 @@ function createInnerHandler() {
         version: APP_VERSION,
       },
       instructions:
-        "This is a True Model B Google Marketing connector. Identify the operator with google_get_operator, list Google connections with google_connections_list, then use ga4_* tools for Analytics and ads_* tools for Google Ads. The server routes each GA4 property and Ads customer to the Google connection that owns it. Never invent resource IDs. Google Ads is read-only.",
+        "This is a True Model B Google Marketing connector. Identify the operator with google_get_operator, list Google connections with google_connections_list, then use ga4_* tools for Analytics, ads_* tools for Google Ads, and dv360_* tools for Display & Video 360. The server routes each GA4 property, Ads customer, and DV360 advertiser to the Google connection that owns it. Never invent resource IDs. Google Ads and DV360 are read-only. If a connection is missing the DV360 scope, reconnect it with google_connections_start.",
       onEvent: (event) => {
         if (event.type === "ERROR") {
           logger.error("MCP handler error", {

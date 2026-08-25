@@ -14,7 +14,7 @@ Create a **new** Google OAuth web client. Do not reuse V3 secrets.
 
 ## Steps
 
-1. `.\scripts\cloud-run-setup.ps1 -ProjectId YOUR_PROJECT` — enables APIs, creates Artifact Registry and named Firestore DB
+1. `.\scripts\cloud-run-setup.ps1 -ProjectId YOUR_PROJECT` — enables APIs (including Display & Video 360), creates Artifact Registry and named Firestore DB
 2. Build and deploy with `.\scripts\cloud-run-deploy.ps1`
 3. Set env with `.\scripts\cloud-run-set-env.ps1`
 4. Add `{APP_BASE_URL}/oauth/google/callback` to the Google OAuth client

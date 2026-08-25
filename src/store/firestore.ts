@@ -7,6 +7,8 @@ import type {
   AdsHierarchyEdgeRecord,
   AppStore,
   ConnectionStatus,
+  Dv360AdvertiserRecord,
+  Dv360PartnerRecord,
   Ga4AccountRecord,
   Ga4PropertyRecord,
   GoogleConnectionRecord,
@@ -24,6 +26,8 @@ const ACCOUNTS = "ga4_accounts";
 const PROPERTIES = "ga4_properties";
 const ADS_CUSTOMERS = "ads_customers";
 const ADS_EDGES = "ads_hierarchy_edges";
+const DV360_PARTNERS = "dv360_partners";
+const DV360_ADVERTISERS = "dv360_advertisers";
 const TRANSACTIONS = "oauth_transactions";
 const SESSIONS = "sessions";
 
@@ -363,6 +367,91 @@ export function createFirestoreAppStore(dbFactory?: () => Firestore): AppStore {
       }
       const snapshot = await query.get();
       return snapshot.docs.map((doc) => doc.data() as AdsHierarchyEdgeRecord);
+    },
+
+    async replaceDv360Resources(operatorId, connectionId, partners, advertisers) {
+      const firestore = db();
+      const timestamp = nowIso();
+      const [existingPartners, existingAdvertisers] = await Promise.all([
+        firestore.collection(DV360_PARTNERS).where("connectionId", "==", connectionId).get(),
+        firestore.collection(DV360_ADVERTISERS).where("connectionId", "==", connectionId).get(),
+      ]);
+
+      const batch = firestore.batch();
+      for (const doc of existingPartners.docs) {
+        batch.delete(doc.ref);
+      }
+      for (const doc of existingAdvertisers.docs) {
+        batch.delete(doc.ref);
+      }
+      for (const partner of partners) {
+        const id = resourceDocId(connectionId, partner.partnerId);
+        const record: Dv360PartnerRecord = {
+          id,
+          connectionId,
+          operatorId,
+          ...partner,
+          createdAt: timestamp,
+          updatedAt: timestamp,
+          lastSyncedAt: timestamp,
+        };
+        batch.set(firestore.collection(DV360_PARTNERS).doc(id), record);
+      }
+      for (const advertiser of advertisers) {
+        const id = resourceDocId(connectionId, advertiser.advertiserId);
+        const record: Dv360AdvertiserRecord = {
+          id,
+          connectionId,
+          operatorId,
+          ...advertiser,
+          createdAt: timestamp,
+          updatedAt: timestamp,
+          lastSyncedAt: timestamp,
+        };
+        batch.set(firestore.collection(DV360_ADVERTISERS).doc(id), record);
+      }
+      batch.set(
+        firestore.collection(CONNECTIONS).doc(connectionId),
+        { lastSyncedAt: timestamp, updatedAt: timestamp },
+        { merge: true },
+      );
+      await batch.commit();
+    },
+
+    async listDv360Partners(operatorId, connectionId) {
+      let query = db().collection(DV360_PARTNERS).where("operatorId", "==", operatorId);
+      if (connectionId) {
+        query = query.where("connectionId", "==", connectionId);
+      }
+      const snapshot = await query.get();
+      return snapshot.docs.map((doc) => doc.data() as Dv360PartnerRecord);
+    },
+
+    async findDv360PartnersByPartnerId(operatorId, partnerId) {
+      const snapshot = await db()
+        .collection(DV360_PARTNERS)
+        .where("operatorId", "==", operatorId)
+        .where("partnerId", "==", partnerId)
+        .get();
+      return snapshot.docs.map((doc) => doc.data() as Dv360PartnerRecord);
+    },
+
+    async listDv360Advertisers(operatorId, connectionId) {
+      let query = db().collection(DV360_ADVERTISERS).where("operatorId", "==", operatorId);
+      if (connectionId) {
+        query = query.where("connectionId", "==", connectionId);
+      }
+      const snapshot = await query.get();
+      return snapshot.docs.map((doc) => doc.data() as Dv360AdvertiserRecord);
+    },
+
+    async findDv360AdvertisersByAdvertiserId(operatorId, advertiserId) {
+      const snapshot = await db()
+        .collection(DV360_ADVERTISERS)
+        .where("operatorId", "==", operatorId)
+        .where("advertiserId", "==", advertiserId)
+        .get();
+      return snapshot.docs.map((doc) => doc.data() as Dv360AdvertiserRecord);
     },
 
     async createTransaction(input) {

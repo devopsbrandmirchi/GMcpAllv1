@@ -23,7 +23,7 @@ export function connectionsPageHtml(params: {
       <h1>Google connections</h1>
       ${params.email ? `<p>Operator workspace started as <code>${escapeHtml(params.email)}</code>.</p>` : ""}
       ${params.notice ? `<p class="note">${escapeHtml(params.notice)}</p>` : ""}
-      <p>Each Google Account is an independent OAuth connection. GA4 properties and Google Ads customers are routed to the connection that authorized them.</p>
+      <p>Each Google Account is an independent OAuth connection. GA4 properties, Google Ads customers, and DV360 partners are routed to the connection that authorized them.</p>
       <ul>${rows || "<li>No Google Accounts connected yet.</li>"}</ul>
       <form method="post" action="/oauth/google/connect">
         <button type="submit">Connect another Google Account</button>

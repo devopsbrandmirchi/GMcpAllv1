@@ -1,7 +1,13 @@
 import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { CodeChallengeMethod, OAuth2Client } from "google-auth-library";
 import { AppError, mapGoogleError } from "@/lib/errors";
-import { GA4_READONLY_SCOPE, GOOGLE_ADS_SCOPE, GOOGLE_OPENID_SCOPES, getConfig } from "@/lib/config";
+import {
+  DV360_SCOPE,
+  GA4_READONLY_SCOPE,
+  GOOGLE_ADS_SCOPE,
+  GOOGLE_OPENID_SCOPES,
+  getConfig,
+} from "@/lib/config";
 import { logger } from "@/lib/logger";
 import { decryptRefreshToken, encryptRefreshToken } from "@/lib/crypto";
 import { getAppStore } from "@/store/app-store";
@@ -25,6 +31,7 @@ export interface GoogleIdentity {
   email: string | null;
   displayName: string | null;
   refreshToken: string | null;
+  scopes: string[];
 }
 
 const accessTokenCache = new Map<string, { token: string; exp: number; client: OAuth2Client }>();
@@ -141,6 +148,7 @@ export async function exchangeAuthorizationCode(params: {
     email: payload?.email ?? null,
     displayName: payload?.name ?? null,
     refreshToken: tokens.refresh_token ?? null,
+    scopes: parseGrantedScopes(tokens.scope),
   };
 }
 
@@ -159,17 +167,30 @@ export async function assertConnectionOwned(
   return connection;
 }
 
+export function parseGrantedScopes(scope?: string | null): string[] {
+  const granted = (scope ?? "")
+    .split(/\s+/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+  return granted.length > 0 ? [...new Set(granted)] : [...GOOGLE_OPENID_SCOPES];
+}
+
 export function connectionHasScope(connection: GoogleConnectionRecord, scope: string): boolean {
   return connection.scopes.includes(scope);
 }
 
-export function connectionProducts(connection: GoogleConnectionRecord): Array<"GA4" | "Google Ads"> {
-  const products: Array<"GA4" | "Google Ads"> = [];
+export function connectionProducts(
+  connection: GoogleConnectionRecord,
+): Array<"GA4" | "Google Ads" | "DV360"> {
+  const products: Array<"GA4" | "Google Ads" | "DV360"> = [];
   if (connectionHasScope(connection, GA4_READONLY_SCOPE)) {
     products.push("GA4");
   }
   if (connectionHasScope(connection, GOOGLE_ADS_SCOPE)) {
     products.push("Google Ads");
+  }
+  if (connectionHasScope(connection, DV360_SCOPE)) {
+    products.push("DV360");
   }
   return products;
 }
@@ -318,4 +339,4 @@ export function connectionScopes(): string[] {
   return [...GOOGLE_OPENID_SCOPES];
 }
 
-export { GA4_READONLY_SCOPE, GOOGLE_ADS_SCOPE };
+export { DV360_SCOPE, GA4_READONLY_SCOPE, GOOGLE_ADS_SCOPE };

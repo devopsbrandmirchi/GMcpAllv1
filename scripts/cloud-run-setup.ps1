@@ -24,6 +24,7 @@ $apis = @(
   "analyticsdata.googleapis.com",
   "analyticsadmin.googleapis.com",
   "googleads.googleapis.com",
+  "displayvideo.googleapis.com",
   "firestore.googleapis.com",
   "secretmanager.googleapis.com"
 )

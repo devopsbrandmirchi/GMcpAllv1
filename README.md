@@ -2,13 +2,14 @@
 
 True Model B Google Marketing MCP for Claude.ai Custom Connectors.
 
-This is **not** a GA4-only connector and **not** a Google Ads-only connector. It is a shared platform with two product adapters now and a reserved extension point for DV360 later:
+This is **not** a GA4-only connector and **not** a Google Ads-only connector. It is a shared platform with GA4, Google Ads, and Display & Video 360 adapters:
 
 ```text
 Operator
   +-- Google Connection A
   |     +-- GA4 properties
   |     +-- Google Ads customers / MCC hierarchy
+  |     +-- DV360 partners / advertisers
   +-- Google Connection B
 ```
 
@@ -24,18 +25,20 @@ flowchart TB
   Resolver["ConnectionResolver"]
   Ga4["GA4 adapter"]
   Ads["Google Ads adapter"]
-  Dv360["DV360 future"]
+  Dv360["DV360 adapter"]
   Ga4Api["GA4 APIs"]
   AdsApi["Ads REST v25"]
+  DvApi["DV360 REST v4"]
 
   Claude --> McpAuth
   McpAuth --> Operator
   Operator --> Resolver
   Resolver --> Ga4
   Resolver --> Ads
-  Resolver -.-> Dv360
+  Resolver --> Dv360
   Ga4 --> Ga4Api
   Ads --> AdsApi
+  Dv360 --> DvApi
 ```
 
 See [docs/architecture.md](docs/architecture.md).
@@ -72,7 +75,11 @@ Uses official Google Ads REST **v25**. Read-only. The app developer token is an 
 
 The server resolves `login-customer-id` from discovered MCC hierarchy. Hyphenated customer IDs are normalized before API use.
 
-See [docs/google-ads.md](docs/google-ads.md) and [docs/ga4.md](docs/ga4.md).
+See [docs/google-ads.md](docs/google-ads.md), [docs/ga4.md](docs/ga4.md), and [docs/dv360.md](docs/dv360.md).
+
+## Display & Video 360
+
+Uses official Display & Video 360 REST **v4**. Read-only discovery in this phase. Existing Google connections must reconnect to grant `https://www.googleapis.com/auth/display-video`. No extra secrets.
 
 ## Deployment
 

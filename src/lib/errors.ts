@@ -23,11 +23,14 @@ export type AppErrorCode =
   | "resource_not_accessible"
   | "google_oauth_error"
   | "google_ads_api_error"
+  | "google_dv360_api_error"
   | "ga4_api_error"
   | "invalid_customer_id"
   | "invalid_property_id"
   | "customer_ambiguous"
   | "customer_not_found"
+  | "advertiser_not_found"
+  | "partner_not_found"
   | "rate_limited"
   | "configuration_error"
   | "internal_error"
@@ -82,7 +85,10 @@ function combinedMessage(error: GoogleLikeError): string {
   return parts.filter(Boolean).join(" ");
 }
 
-export function mapGoogleError(error: unknown, product: "ga4" | "ads" | "oauth" = "ga4"): AppError {
+export function mapGoogleError(
+  error: unknown,
+  product: "ga4" | "ads" | "dv360" | "oauth" = "ga4",
+): AppError {
   if (error instanceof AppError) {
     return error;
   }
@@ -131,8 +137,10 @@ export function mapGoogleError(error: unknown, product: "ga4" | "ads" | "oauth" 
     return new AppError(
       product === "ads"
         ? "The requested Google Ads customer is not accessible through the selected Google connection."
-        : "The requested GA4 property is not accessible through the selected Google connection.",
-      product === "ads" ? "resource_not_accessible" : "property_not_accessible",
+        : product === "dv360"
+          ? "The requested DV360 resource is not accessible through the selected Google connection."
+          : "The requested GA4 property is not accessible through the selected Google connection.",
+      product === "ads" || product === "dv360" ? "resource_not_accessible" : "property_not_accessible",
       403,
       { googleRequestId: requestId },
     );
@@ -142,7 +150,9 @@ export function mapGoogleError(error: unknown, product: "ga4" | "ads" | "oauth" 
     return new AppError(
       product === "ads"
         ? "The Google Ads API quota or rate limit was exceeded. Wait and try again."
-        : "The Google Analytics API quota or rate limit was exceeded. Wait and try again.",
+        : product === "dv360"
+          ? "The Display & Video 360 API quota or rate limit was exceeded. Wait and try again."
+          : "The Google Analytics API quota or rate limit was exceeded. Wait and try again.",
       "rate_limited",
       429,
       { googleRequestId: requestId },
@@ -170,24 +180,38 @@ export function mapGoogleError(error: unknown, product: "ga4" | "ads" | "oauth" 
     );
   }
 
-  if (numericCode === 404 || lower.includes("property not found")) {
+  if (numericCode === 404 || lower.includes("property not found") || lower.includes("not found")) {
     return new AppError(
       product === "ads"
         ? "The requested Google Ads customer was not found."
-        : "The requested GA4 property was not found.",
-      product === "ads" ? "customer_not_found" : "property_not_found",
+        : product === "dv360"
+          ? "The requested DV360 resource was not found."
+          : "The requested GA4 property was not found.",
+      product === "ads"
+        ? "customer_not_found"
+        : product === "dv360"
+          ? "advertiser_not_found"
+          : "property_not_found",
       404,
       { googleRequestId: requestId },
     );
   }
 
   const code: AppErrorCode =
-    product === "ads" ? "google_ads_api_error" : product === "oauth" ? "google_oauth_error" : "ga4_api_error";
+    product === "ads"
+      ? "google_ads_api_error"
+      : product === "dv360"
+        ? "google_dv360_api_error"
+        : product === "oauth"
+          ? "google_oauth_error"
+          : "ga4_api_error";
   return new AppError(
     message ||
       (product === "ads"
         ? "The Google Ads API request failed."
-        : "The Google Analytics API request failed."),
+        : product === "dv360"
+          ? "The Display & Video 360 API request failed."
+          : "The Google Analytics API request failed."),
     code,
     toHttpStatus(numericCode),
     { googleRequestId: requestId },

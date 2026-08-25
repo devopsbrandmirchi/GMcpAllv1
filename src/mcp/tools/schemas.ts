@@ -206,6 +206,35 @@ export const adsReportingInputSchema = z.object({
   limit: z.number().int().min(1).max(10000).default(1000),
 });
 
+export const dv360IdSchema = z
+  .string()
+  .min(1)
+  .regex(/^\d+$/, "Use a numeric DV360 ID such as 123456.");
+
+export const dv360ListPartnersInputSchema = z.object({
+  connectionId: optionalConnectionIdSchema,
+});
+
+export const dv360ListAdvertisersInputSchema = z.object({
+  partnerId: dv360IdSchema.optional(),
+  connectionId: optionalConnectionIdSchema,
+});
+
+export const dv360GetAdvertiserInputSchema = z.object({
+  advertiserId: dv360IdSchema,
+  connectionId: optionalConnectionIdSchema,
+});
+
+export const dv360PagedAdvertiserInputSchema = z.object({
+  advertiserId: dv360IdSchema,
+  connectionId: optionalConnectionIdSchema,
+  pageSize: z.number().int().min(1).max(200).default(100),
+  pageToken: z.string().min(1).optional(),
+  filter: z.string().min(1).optional(),
+  entityStatus: z.string().min(1).optional(),
+  orderBy: z.string().min(1).optional(),
+});
+
 export function jsonToolResult(data: unknown) {
   return {
     content: [

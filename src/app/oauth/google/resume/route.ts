@@ -39,6 +39,7 @@ export async function POST(req: Request) {
       email: transaction.pendingGoogleEmail ?? null,
       displayName: transaction.pendingGoogleDisplayName ?? null,
       refreshToken: null,
+      scopes: transaction.pendingGoogleScopes ?? [],
     };
 
     let operatorId: string;

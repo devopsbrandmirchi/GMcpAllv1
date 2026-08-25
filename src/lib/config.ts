@@ -5,11 +5,14 @@ export const GA4_READONLY_SCOPE =
 
 export const GOOGLE_ADS_SCOPE = "https://www.googleapis.com/auth/adwords";
 
+export const DV360_SCOPE = "https://www.googleapis.com/auth/display-video";
+
 export const GOOGLE_OPENID_SCOPES = [
   "openid",
   "email",
   GA4_READONLY_SCOPE,
   GOOGLE_ADS_SCOPE,
+  DV360_SCOPE,
 ] as const;
 
 export const DEFAULT_FIRESTORE_DATABASE_ID = "gconnect-mcp-all-v1";

@@ -8,7 +8,11 @@ import type {
   DiscoveredAccount,
   DiscoveredAdsCustomer,
   DiscoveredAdsEdge,
+  DiscoveredDv360Advertiser,
+  DiscoveredDv360Partner,
   DiscoveredProperty,
+  Dv360AdvertiserRecord,
+  Dv360PartnerRecord,
   Ga4AccountRecord,
   Ga4PropertyRecord,
   GoogleConnectionRecord,
@@ -31,6 +35,8 @@ export function createMemoryAppStore(): AppStore {
   const properties = new Map<string, Ga4PropertyRecord>();
   const adsCustomers = new Map<string, AdsCustomerRecord>();
   const adsEdges = new Map<string, AdsHierarchyEdgeRecord>();
+  const dv360Partners = new Map<string, Dv360PartnerRecord>();
+  const dv360Advertisers = new Map<string, Dv360AdvertiserRecord>();
   const transactions = new Map<string, OAuthTransactionRecord>();
   const sessions = new Map<string, SessionRecord>();
 
@@ -287,6 +293,78 @@ export function createMemoryAppStore(): AppStore {
       return [...adsEdges.values()].filter(
         (item) =>
           item.operatorId === operatorId && (!connectionId || item.connectionId === connectionId),
+      );
+    },
+
+    async replaceDv360Resources(operatorId, connectionId, partners, advertisers) {
+      const timestamp = nowIso();
+      for (const [id, partner] of dv360Partners) {
+        if (partner.connectionId === connectionId) {
+          dv360Partners.delete(id);
+        }
+      }
+      for (const [id, advertiser] of dv360Advertisers) {
+        if (advertiser.connectionId === connectionId) {
+          dv360Advertisers.delete(id);
+        }
+      }
+      for (const partner of partners as DiscoveredDv360Partner[]) {
+        const id = resourceDocId(connectionId, partner.partnerId);
+        dv360Partners.set(id, {
+          id,
+          connectionId,
+          operatorId,
+          ...partner,
+          createdAt: timestamp,
+          updatedAt: timestamp,
+          lastSyncedAt: timestamp,
+        });
+      }
+      for (const advertiser of advertisers as DiscoveredDv360Advertiser[]) {
+        const id = resourceDocId(connectionId, advertiser.advertiserId);
+        dv360Advertisers.set(id, {
+          id,
+          connectionId,
+          operatorId,
+          ...advertiser,
+          createdAt: timestamp,
+          updatedAt: timestamp,
+          lastSyncedAt: timestamp,
+        });
+      }
+      const connection = connections.get(connectionId);
+      if (connection) {
+        connections.set(connectionId, {
+          ...connection,
+          lastSyncedAt: timestamp,
+          updatedAt: timestamp,
+        });
+      }
+    },
+
+    async listDv360Partners(operatorId, connectionId) {
+      return [...dv360Partners.values()].filter(
+        (item) =>
+          item.operatorId === operatorId && (!connectionId || item.connectionId === connectionId),
+      );
+    },
+
+    async findDv360PartnersByPartnerId(operatorId, partnerId) {
+      return [...dv360Partners.values()].filter(
+        (item) => item.operatorId === operatorId && item.partnerId === partnerId,
+      );
+    },
+
+    async listDv360Advertisers(operatorId, connectionId) {
+      return [...dv360Advertisers.values()].filter(
+        (item) =>
+          item.operatorId === operatorId && (!connectionId || item.connectionId === connectionId),
+      );
+    },
+
+    async findDv360AdvertisersByAdvertiserId(operatorId, advertiserId) {
+      return [...dv360Advertisers.values()].filter(
+        (item) => item.operatorId === operatorId && item.advertiserId === advertiserId,
       );
     },
 

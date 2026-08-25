@@ -11,7 +11,7 @@ export function registerStartConnectionTool(server: McpServer): void {
     {
       title: "Connect another Google Account",
       description:
-        "Creates a time-limited URL that starts an independent Google OAuth connection for the authenticated operator. Open the URL in a browser.",
+        "Creates a time-limited URL that starts an independent Google OAuth connection for the authenticated operator. Pass connectionId to reconnect the same Google account and grant newly required product scopes such as DV360. Open the URL in a browser.",
       inputSchema: z.object({
         connectionId: z.string().min(1).optional(),
       }),

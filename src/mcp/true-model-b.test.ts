@@ -1,13 +1,23 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { encryptRefreshToken } from "@/lib/crypto";
 import { runWithOperator } from "@/lib/request-context";
+import { DV360_SCOPE } from "@/lib/config";
 import { resolveAuthorizedProperty } from "@/products/ga4/routing";
 import { resolveAdsAccessContext } from "@/products/google-ads/routing";
+import {
+  resolveDv360AdvertiserAccess,
+  resolveDv360PartnerAccess,
+} from "@/products/dv360/routing";
 import { assertConnectionOwned, publicConnectionView } from "@/providers/google/auth";
 import { createMemoryAppStore } from "@/store/memory";
 import { setAppStore } from "@/store/app-store";
 import { setRequiredEnv } from "@/test/env";
-import type { AppStore, DiscoveredAdsCustomer } from "@/store/types";
+import type {
+  AppStore,
+  DiscoveredAdsCustomer,
+  DiscoveredDv360Advertiser,
+  DiscoveredDv360Partner,
+} from "@/store/types";
 
 const clientsSeen: string[] = [];
 
@@ -48,8 +58,13 @@ async function seedOperator(
   connections: Array<{
     subject: string;
     token: string;
+    scopes?: string[];
     properties?: Array<{ account: string; propertyId: string; name: string }>;
     ads?: DiscoveredAdsCustomer[];
+    dv360?: {
+      partners: DiscoveredDv360Partner[];
+      advertisers: DiscoveredDv360Advertiser[];
+    };
   }>,
 ) {
   const operator = await store.createOperator(email);
@@ -60,6 +75,7 @@ async function seedOperator(
       googleSubjectId: item.subject,
       googleEmail: `${item.subject}@example.com`,
       encryptedRefreshToken: encryptRefreshToken(item.token),
+      scopes: item.scopes,
     });
     if (item.properties) {
       await store.replaceConnectionResources(
@@ -79,6 +95,14 @@ async function seedOperator(
     }
     if (item.ads) {
       await store.replaceAdsResources(operator.operatorId, connection.connectionId, item.ads, []);
+    }
+    if (item.dv360) {
+      await store.replaceDv360Resources(
+        operator.operatorId,
+        connection.connectionId,
+        item.dv360.partners,
+        item.dv360.advertisers,
+      );
     }
     created.push(connection);
   }
@@ -455,5 +479,161 @@ describe("True Model B + Ads routing", () => {
     expect(disconnected.refreshTokenEncrypted).toBeNull();
     expect(publicConnectionView(disconnected)).not.toHaveProperty("refreshTokenEncrypted");
     await expect(assertConnectionOwned(operator.operatorId, connections[0]!.connectionId)).resolves.toBeTruthy();
+  });
+});
+
+function dv360Seed(partnerId: string, advertiserId: string, name: string) {
+  return {
+    partners: [
+      {
+        partnerId,
+        displayName: `${name} partner`,
+        entityStatus: "ENTITY_STATUS_ACTIVE",
+        currencyCode: "USD",
+        timeZone: "America/New_York",
+      },
+    ],
+    advertisers: [
+      {
+        partnerId,
+        advertiserId,
+        displayName: `${name} advertiser`,
+        entityStatus: "ENTITY_STATUS_ACTIVE",
+        currencyCode: "USD",
+        timeZone: "America/New_York",
+      },
+    ],
+  };
+}
+
+describe("True Model B + DV360 routing", () => {
+  let store: AppStore;
+
+  beforeEach(() => {
+    setRequiredEnv();
+    clientsSeen.length = 0;
+    store = createMemoryAppStore();
+    setAppStore(store);
+  });
+
+  it("Operator A / Google X uses X credential for advertiser X", async () => {
+    const { operator } = await seedOperator(store, "a@example.com", [
+      {
+        subject: "google-x",
+        token: "1//x",
+        scopes: [DV360_SCOPE],
+        dv360: dv360Seed("11", "101", "X"),
+      },
+    ]);
+    await runWithOperator({ requestId: "r1", operatorId: operator.operatorId, sessionId: "s1" }, async () => {
+      const resolved = await resolveDv360AdvertiserAccess("101");
+      expect(resolved.connection.googleSubjectId).toBe("google-x");
+      expect(resolved.advertiserId).toBe("101");
+      expect(resolved.partnerId).toBe("11");
+    });
+    expect(clientsSeen).toEqual(["google-x:1//x"]);
+  });
+
+  it("Operator A / Google Y uses Y not X", async () => {
+    const { operator } = await seedOperator(store, "a@example.com", [
+      {
+        subject: "google-x",
+        token: "1//x",
+        scopes: [DV360_SCOPE],
+        dv360: dv360Seed("11", "101", "X"),
+      },
+      {
+        subject: "google-y",
+        token: "1//y",
+        scopes: [DV360_SCOPE],
+        dv360: dv360Seed("22", "202", "Y"),
+      },
+    ]);
+    await runWithOperator({ requestId: "r1", operatorId: operator.operatorId, sessionId: "s1" }, async () => {
+      const resolved = await resolveDv360AdvertiserAccess("202");
+      expect(resolved.connection.googleSubjectId).toBe("google-y");
+    });
+    expect(clientsSeen).toEqual(["google-y:1//y"]);
+  });
+
+  it("same Google identity on two operators stays independent", async () => {
+    const a = await seedOperator(store, "op-a@example.com", [
+      {
+        subject: "google-x",
+        token: "1//ax",
+        scopes: [DV360_SCOPE],
+        dv360: dv360Seed("11", "101", "Shared"),
+      },
+    ]);
+    const b = await seedOperator(store, "op-b@example.com", [
+      {
+        subject: "google-x",
+        token: "1//bx",
+        scopes: [DV360_SCOPE],
+        dv360: dv360Seed("11", "101", "Shared"),
+      },
+    ]);
+    expect(a.connections[0]?.connectionId).not.toBe(b.connections[0]?.connectionId);
+    await runWithOperator({ requestId: "r1", operatorId: a.operator.operatorId, sessionId: "sa" }, async () => {
+      await resolveDv360AdvertiserAccess("101");
+    });
+    await runWithOperator({ requestId: "r2", operatorId: b.operator.operatorId, sessionId: "sb" }, async () => {
+      await resolveDv360AdvertiserAccess("101");
+    });
+    expect(clientsSeen).toEqual(["google-x:1//ax", "google-x:1//bx"]);
+  });
+
+  it("Operator A cannot access Operator B advertiser", async () => {
+    const a = await seedOperator(store, "op-a@example.com", [
+      {
+        subject: "google-a",
+        token: "1//a",
+        scopes: [DV360_SCOPE],
+        dv360: dv360Seed("11", "101", "A"),
+      },
+    ]);
+    await seedOperator(store, "op-b@example.com", [
+      {
+        subject: "google-b",
+        token: "1//b",
+        scopes: [DV360_SCOPE],
+        dv360: dv360Seed("99", "909", "B"),
+      },
+    ]);
+    await runWithOperator({ requestId: "r1", operatorId: a.operator.operatorId, sessionId: "sa" }, async () => {
+      await expect(resolveDv360AdvertiserAccess("909")).rejects.toThrow(/not accessible/i);
+      await expect(resolveDv360PartnerAccess("99")).rejects.toThrow(/not accessible/i);
+    });
+  });
+
+  it("missing DV360 scope requires reauthorization on that connection", async () => {
+    const { operator } = await seedOperator(store, "a@example.com", [
+      {
+        subject: "google-x",
+        token: "1//x",
+        scopes: [],
+        dv360: dv360Seed("11", "101", "X"),
+      },
+    ]);
+    await runWithOperator({ requestId: "r1", operatorId: operator.operatorId, sessionId: "s1" }, async () => {
+      await expect(resolveDv360AdvertiserAccess("101")).rejects.toThrow(/not authorized for DV360/i);
+    });
+  });
+
+  it("present DV360 scope uses the owning connection token", async () => {
+    const { operator } = await seedOperator(store, "a@example.com", [
+      {
+        subject: "google-x",
+        token: "1//x",
+        scopes: [DV360_SCOPE],
+        dv360: dv360Seed("11", "101", "X"),
+      },
+    ]);
+    await runWithOperator({ requestId: "r1", operatorId: operator.operatorId, sessionId: "s1" }, async () => {
+      const resolved = await resolveDv360PartnerAccess("11");
+      expect(resolved.connectionId).toBeTruthy();
+      expect(resolved.partnerId).toBe("11");
+    });
+    expect(clientsSeen).toEqual(["google-x:1//x"]);
   });
 });

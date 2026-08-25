@@ -145,6 +145,7 @@ export async function GET(req: Request) {
         pendingRefreshTokenEncrypted: identity.refreshToken
           ? encryptRefreshToken(identity.refreshToken)
           : null,
+        pendingGoogleScopes: identity.scopes,
       });
       const headers = new Headers();
       headers.append("Set-Cookie", resumeCookieHeader(resumeNonce, secure));

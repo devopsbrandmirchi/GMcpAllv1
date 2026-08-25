@@ -63,6 +63,38 @@
         { "fieldPath": "operatorId", "order": "ASCENDING" },
         { "fieldPath": "connectionId", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "dv360_partners",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "operatorId", "order": "ASCENDING" },
+        { "fieldPath": "partnerId", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "dv360_partners",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "operatorId", "order": "ASCENDING" },
+        { "fieldPath": "connectionId", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "dv360_advertisers",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "operatorId", "order": "ASCENDING" },
+        { "fieldPath": "advertiserId", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "dv360_advertisers",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "operatorId", "order": "ASCENDING" },
+        { "fieldPath": "connectionId", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

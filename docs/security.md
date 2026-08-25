@@ -6,7 +6,7 @@
 - Browser cannot supply `operatorId` on the Google callback
 - No refresh tokens, developer token, or cookies in logs
 - Safe MCP errors: `{ error, message }` only
-- Google Ads is read-only
+- Google Ads and DV360 are read-only
 - Named Firestore database isolation from V1/V3
 
 Required secrets (never commit):

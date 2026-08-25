@@ -12,7 +12,7 @@ export function registerListConnectionsTool(server: McpServer): void {
     {
       title: "List Google connections",
       description:
-        "Lists Google OAuth connections owned by the authenticated MCP operator, including which products (GA4, Google Ads) each connection authorized. Never returns tokens.",
+        "Lists Google OAuth connections owned by the authenticated MCP operator, including which products (GA4, Google Ads, DV360) each connection authorized. Never returns tokens.",
       inputSchema: z.object({}),
     },
     async () => {

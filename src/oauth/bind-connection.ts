@@ -1,8 +1,9 @@
 import { createOAuthClient, connectionScopes, type GoogleIdentity } from "@/providers/google/auth";
 import { persistDiscoveredGa4Resources } from "@/products/ga4/routing";
 import { persistDiscoveredAdsResources } from "@/products/google-ads/routing";
+import { persistDiscoveredDv360Resources } from "@/products/dv360/routing";
 import { encryptRefreshToken } from "@/lib/crypto";
-import { GA4_READONLY_SCOPE, GOOGLE_ADS_SCOPE } from "@/lib/config";
+import { DV360_SCOPE, GA4_READONLY_SCOPE, GOOGLE_ADS_SCOPE } from "@/lib/config";
 import { logger } from "@/lib/logger";
 import { getAppStore } from "@/store/app-store";
 import type { GoogleConnectionRecord, OperatorRecord } from "@/store/types";
@@ -29,7 +30,7 @@ export async function bindGoogleIdentityToOperator(params: {
     googleEmail: params.identity.email,
     googleDisplayName: params.identity.displayName,
     encryptedRefreshToken: encrypted,
-    scopes: connectionScopes(),
+    scopes: params.identity.scopes.length > 0 ? params.identity.scopes : connectionScopes(),
   });
 
   if (connection.refreshTokenEncrypted) {
@@ -54,6 +55,17 @@ export async function bindGoogleIdentityToOperator(params: {
         await persistDiscoveredAdsResources(params.operatorId, connection.connectionId, client);
       } catch (error) {
         logger.warn("Google Ads discovery failed after bind", {
+          operatorId: params.operatorId,
+          connectionId: connection.connectionId,
+          errorCategory: error instanceof Error ? error.name : "unknown",
+        });
+      }
+    }
+    if (connection.scopes.includes(DV360_SCOPE)) {
+      try {
+        await persistDiscoveredDv360Resources(params.operatorId, connection.connectionId, client);
+      } catch (error) {
+        logger.warn("DV360 discovery failed after bind", {
           operatorId: params.operatorId,
           connectionId: connection.connectionId,
           errorCategory: error instanceof Error ? error.name : "unknown",

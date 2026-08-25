@@ -21,6 +21,7 @@ Kept separate:
 
 - `ga4_accounts`, `ga4_properties`
 - `ads_customers`, `ads_hierarchy_edges`
+- `dv360_partners`, `dv360_advertisers`
 
 Routing is always:
 

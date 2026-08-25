@@ -15,7 +15,7 @@ export type OAuthOperation =
   | "reconnect"
   | "resume_choice";
 
-export type ProductId = "ga4" | "google_ads";
+export type ProductId = "ga4" | "google_ads" | "dv360";
 
 export interface OperatorRecord {
   operatorId: string;
@@ -95,6 +95,35 @@ export interface AdsHierarchyEdgeRecord {
   updatedAt: string;
 }
 
+export interface Dv360PartnerRecord {
+  id: string;
+  connectionId: string;
+  operatorId: string;
+  partnerId: string;
+  displayName: string;
+  entityStatus: string | null;
+  currencyCode: string | null;
+  timeZone: string | null;
+  createdAt: string;
+  updatedAt: string;
+  lastSyncedAt: string;
+}
+
+export interface Dv360AdvertiserRecord {
+  id: string;
+  connectionId: string;
+  operatorId: string;
+  partnerId: string;
+  advertiserId: string;
+  displayName: string;
+  entityStatus: string | null;
+  currencyCode: string | null;
+  timeZone: string | null;
+  createdAt: string;
+  updatedAt: string;
+  lastSyncedAt: string;
+}
+
 export interface ResumeCandidate {
   operatorId: string;
   primaryEmail: string | null;
@@ -118,6 +147,7 @@ export interface OAuthTransactionRecord {
   pendingGoogleEmail?: string | null;
   pendingGoogleDisplayName?: string | null;
   pendingRefreshTokenEncrypted?: string | null;
+  pendingGoogleScopes?: string[];
 }
 
 export interface SessionRecord {
@@ -174,6 +204,23 @@ export interface DiscoveredAdsEdge {
   level: number;
 }
 
+export interface DiscoveredDv360Partner {
+  partnerId: string;
+  displayName: string;
+  entityStatus: string | null;
+  currencyCode: string | null;
+  timeZone: string | null;
+}
+
+export interface DiscoveredDv360Advertiser {
+  partnerId: string;
+  advertiserId: string;
+  displayName: string;
+  entityStatus: string | null;
+  currencyCode: string | null;
+  timeZone: string | null;
+}
+
 export interface AppStore {
   createOperator(primaryEmail?: string | null): Promise<OperatorRecord>;
   getOperator(operatorId: string): Promise<OperatorRecord | undefined>;
@@ -219,6 +266,23 @@ export interface AppStore {
     customerId: string,
   ): Promise<AdsCustomerRecord[]>;
   listAdsHierarchyEdges(operatorId: string, connectionId?: string): Promise<AdsHierarchyEdgeRecord[]>;
+
+  replaceDv360Resources(
+    operatorId: string,
+    connectionId: string,
+    partners: DiscoveredDv360Partner[],
+    advertisers: DiscoveredDv360Advertiser[],
+  ): Promise<void>;
+  listDv360Partners(operatorId: string, connectionId?: string): Promise<Dv360PartnerRecord[]>;
+  findDv360PartnersByPartnerId(
+    operatorId: string,
+    partnerId: string,
+  ): Promise<Dv360PartnerRecord[]>;
+  listDv360Advertisers(operatorId: string, connectionId?: string): Promise<Dv360AdvertiserRecord[]>;
+  findDv360AdvertisersByAdvertiserId(
+    operatorId: string,
+    advertiserId: string,
+  ): Promise<Dv360AdvertiserRecord[]>;
 
   createTransaction(
     input: Omit<OAuthTransactionRecord, "consumedAt">,
