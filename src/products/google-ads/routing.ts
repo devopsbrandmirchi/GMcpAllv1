@@ -3,7 +3,8 @@ import { AppError } from "@/lib/errors";
 import { normalizeCustomerId } from "@/lib/customer-id";
 import { getOperatorContext, getSessionId } from "@/lib/request-context";
 import { logger } from "@/lib/logger";
-import { getAuthorizedClientForConnection } from "@/providers/google/auth";
+import { GOOGLE_ADS_SCOPE } from "@/lib/config";
+import { connectionHasScope, getAuthorizedClientForConnection } from "@/providers/google/auth";
 import { discoverAdsResources } from "@/products/google-ads/discovery";
 import { requireActiveConnections } from "@/products/ga4/routing";
 import { getAppStore } from "@/store/app-store";
@@ -171,7 +172,51 @@ export async function resolveAdsAccessContext(
   };
 }
 
+export async function refreshAdsDiscoveryIfEmpty(
+  operatorId: string,
+  connectionId?: string,
+): Promise<void> {
+  const store = getAppStore();
+  const existing = await store.listAdsCustomers(operatorId, connectionId);
+  if (existing.length > 0) {
+    return;
+  }
+
+  const connections = (await store.listConnections(operatorId)).filter((connection) => {
+    if (connectionId && connection.connectionId !== connectionId) {
+      return false;
+    }
+    return (
+      connection.status === "active" &&
+      connectionHasScope(connection, GOOGLE_ADS_SCOPE) &&
+      Boolean(connection.refreshTokenEncrypted)
+    );
+  });
+
+  let lastError: unknown;
+  for (const connection of connections) {
+    try {
+      const client = await getAuthorizedClientForConnection(operatorId, connection.connectionId);
+      await persistDiscoveredAdsResources(operatorId, connection.connectionId, client);
+    } catch (error) {
+      lastError = error;
+      logger.warn("Google Ads live rediscovery failed", {
+        operatorId,
+        connectionId: connection.connectionId,
+        errorCategory: error instanceof Error ? error.name : "unknown",
+        errorMessage: error instanceof Error ? error.message : "unknown",
+      });
+    }
+  }
+
+  const refreshed = await store.listAdsCustomers(operatorId, connectionId);
+  if (refreshed.length === 0 && lastError) {
+    throw lastError;
+  }
+}
+
 export async function listAccessibleAdsAccounts(operatorId: string, connectionId?: string) {
+  await refreshAdsDiscoveryIfEmpty(operatorId, connectionId);
   const store = getAppStore();
   const [customers, connections] = await Promise.all([
     store.listAdsCustomers(operatorId, connectionId),

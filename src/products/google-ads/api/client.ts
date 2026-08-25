@@ -64,6 +64,7 @@ export async function adsRequest(options: AdsRequestOptions): Promise<AdsJsonRes
     logger.error("Google Ads API error", {
       status: response.status,
       requestId,
+      googleMessage: message,
       errorCategory: "google_ads_api_error",
     });
     throw mapGoogleError(

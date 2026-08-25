@@ -47,6 +47,7 @@ export async function bindGoogleIdentityToOperator(params: {
           operatorId: params.operatorId,
           connectionId: connection.connectionId,
           errorCategory: error instanceof Error ? error.name : "unknown",
+          errorMessage: error instanceof Error ? error.message : "unknown",
         });
       }
     }
@@ -58,6 +59,7 @@ export async function bindGoogleIdentityToOperator(params: {
           operatorId: params.operatorId,
           connectionId: connection.connectionId,
           errorCategory: error instanceof Error ? error.name : "unknown",
+          errorMessage: error instanceof Error ? error.message : "unknown",
         });
       }
     }
@@ -69,6 +71,7 @@ export async function bindGoogleIdentityToOperator(params: {
           operatorId: params.operatorId,
           connectionId: connection.connectionId,
           errorCategory: error instanceof Error ? error.name : "unknown",
+          errorMessage: error instanceof Error ? error.message : "unknown",
         });
       }
     }

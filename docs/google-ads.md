@@ -14,6 +14,8 @@ Every Ads call sends:
 
 The developer token is never logged or returned to Claude.
 
+A Google connection can show product `Google Ads` and still list zero accounts if discovery fails. Cloud logs currently show Ads `403` on `customers:listAccessibleCustomers`. That is an API/developer-token permission problem, not an empty OAuth grant. A test developer token can only access test Ads accounts; production MCC accounts require at least Basic access and a Cloud project that is allowed to use that token.
+
 ## Discovery
 
 1. `customers:listAccessibleCustomers`
