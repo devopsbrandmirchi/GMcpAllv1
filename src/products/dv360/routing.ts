@@ -32,6 +32,9 @@ export function normalizeDv360Id(value: string, label: string): string {
   return trimmed;
 }
 
+export const DV360_EMPTY_ACCESS_HINT =
+  "This Google connection authorized the DV360 OAuth scope, but the Display & Video 360 API returned no partners or advertisers. Scope is not the same as a DV360 user seat. Add this Google user to a DV360 partner, or connect the Google account that actually owns the partner.";
+
 export async function persistDiscoveredDv360Resources(
   operatorId: string,
   connectionId: string,
@@ -218,7 +221,44 @@ export async function resolveDv360AdvertiserAccess(
   };
 }
 
+export async function refreshDv360DiscoveryIfEmpty(
+  operatorId: string,
+  connectionId?: string,
+): Promise<void> {
+  const store = getAppStore();
+  const existingPartners = await store.listDv360Partners(operatorId, connectionId);
+  const existingAdvertisers = await store.listDv360Advertisers(operatorId, connectionId);
+  if (existingPartners.length > 0 || existingAdvertisers.length > 0) {
+    return;
+  }
+
+  const connections = (await store.listConnections(operatorId)).filter((connection) => {
+    if (connectionId && connection.connectionId !== connectionId) {
+      return false;
+    }
+    return (
+      connection.status === "active" &&
+      connectionHasScope(connection, DV360_SCOPE) &&
+      Boolean(connection.refreshTokenEncrypted)
+    );
+  });
+
+  for (const connection of connections) {
+    try {
+      const client = await getAuthorizedClientForConnection(operatorId, connection.connectionId);
+      await persistDiscoveredDv360Resources(operatorId, connection.connectionId, client);
+    } catch (error) {
+      logger.warn("DV360 live rediscovery failed", {
+        operatorId,
+        connectionId: connection.connectionId,
+        errorCategory: error instanceof Error ? error.name : "unknown",
+      });
+    }
+  }
+}
+
 export async function listAccessibleDv360Partners(operatorId: string, connectionId?: string) {
+  await refreshDv360DiscoveryIfEmpty(operatorId, connectionId);
   const store = getAppStore();
   const [partners, connections] = await Promise.all([
     store.listDv360Partners(operatorId, connectionId),
@@ -244,6 +284,7 @@ export async function listAccessibleDv360Advertisers(
   const partnerId = options?.partnerId
     ? normalizeDv360Id(options.partnerId, "DV360 partner ID")
     : undefined;
+  await refreshDv360DiscoveryIfEmpty(operatorId, options?.connectionId);
   const [advertisers, connections] = await Promise.all([
     store.listDv360Advertisers(operatorId, options?.connectionId),
     store.listConnections(operatorId),

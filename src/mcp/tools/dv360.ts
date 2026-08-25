@@ -2,6 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/server";
 import { toToolErrorText } from "@/lib/errors";
 import { loadCurrentOperator } from "@/products/ga4/routing";
 import {
+  DV360_EMPTY_ACCESS_HINT,
   listAccessibleDv360Advertisers,
   listAccessibleDv360Partners,
   resolveDv360AdvertiserAccess,
@@ -69,7 +70,11 @@ export function registerDv360Tools(server: McpServer): void {
       try {
         const operator = await loadCurrentOperator();
         const partners = await listAccessibleDv360Partners(operator.operatorId, input.connectionId);
-        return jsonToolResult({ partners, count: partners.length });
+        return jsonToolResult({
+          partners,
+          count: partners.length,
+          ...(partners.length === 0 ? { hint: DV360_EMPTY_ACCESS_HINT } : {}),
+        });
       } catch (error) {
         return {
           content: [{ type: "text", text: toToolErrorText(error) }],
@@ -94,7 +99,11 @@ export function registerDv360Tools(server: McpServer): void {
           connectionId: input.connectionId,
           partnerId: input.partnerId,
         });
-        return jsonToolResult({ advertisers, count: advertisers.length });
+        return jsonToolResult({
+          advertisers,
+          count: advertisers.length,
+          ...(advertisers.length === 0 ? { hint: DV360_EMPTY_ACCESS_HINT } : {}),
+        });
       } catch (error) {
         return {
           content: [{ type: "text", text: toToolErrorText(error) }],
