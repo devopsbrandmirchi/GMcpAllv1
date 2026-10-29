@@ -4,6 +4,34 @@ import { mapGoogleError } from "@/lib/errors";
 import { normalizePropertyId } from "@/lib/property-id";
 import type { DiscoveredAccount, DiscoveredProperty } from "@/store/types";
 
+/** Convert Google protobuf Timestamp (or ISO string) into a stable UTC ISO timestamp. */
+export function ga4CreateTimeToIso(value: unknown): string | null {
+  if (value == null) return null;
+  if (typeof value === "string") {
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date.toISOString();
+  }
+  if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value.toISOString();
+  if (typeof value === "object" && "seconds" in value) {
+    const stamp = value as { seconds?: number | string | { toString(): string }; nanos?: number };
+    const seconds = Number(stamp.seconds);
+    const nanos = Number(stamp.nanos ?? 0);
+    if (!Number.isFinite(seconds) || !Number.isFinite(nanos)) return null;
+    const date = new Date(seconds * 1000 + Math.floor(nanos / 1e6));
+    return Number.isNaN(date.getTime()) ? null : date.toISOString();
+  }
+  return null;
+}
+
+/** A failed lookup is non-destructive; callers retain any stored timestamp. */
+export async function fetchGa4PropertyCreateTime(
+  client: Pick<v1beta.AnalyticsAdminServiceClient, "getProperty">,
+  propertyId: string,
+): Promise<string | null> {
+  const [property] = await client.getProperty({ name: `properties/${normalizePropertyId(propertyId)}` });
+  return ga4CreateTimeToIso(property.createTime);
+}
+
 export interface Ga4DiscoveryResult {
   accounts: DiscoveredAccount[];
   properties: DiscoveredProperty[];
@@ -40,7 +68,14 @@ export async function discoverGa4Resources(
         if (!property.property) {
           continue;
         }
+        let propertyCreateTime: string | null = null;
+        try {
+          propertyCreateTime = await fetchGa4PropertyCreateTime(client, property.property);
+        } catch {
+          // Preserve discovery even if individual property metadata is unavailable.
+        }
         properties.push({
+          propertyCreateTime,
           ga4AccountId,
           propertyId: normalizePropertyId(property.property),
           displayName: property.displayName ?? "Untitled property",

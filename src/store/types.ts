@@ -59,6 +59,7 @@ export interface Ga4PropertyRecord {
   propertyId: string;
   displayName: string;
   propertyType: string;
+  propertyCreateTime?: string | null;
   createdAt: string;
   updatedAt: string;
   lastSyncedAt: string;
@@ -182,6 +183,7 @@ export interface DiscoveredProperty {
   propertyId: string;
   displayName: string;
   propertyType: string;
+  propertyCreateTime?: string | null;
 }
 
 export interface DiscoveredAdsCustomer {
@@ -249,6 +251,7 @@ export interface AppStore {
   ): Promise<void>;
   listAccounts(operatorId: string, connectionId?: string): Promise<Ga4AccountRecord[]>;
   listProperties(operatorId: string, connectionId?: string): Promise<Ga4PropertyRecord[]>;
+  updatePropertyCreateTime(operatorId: string, connectionId: string, propertyId: string, propertyCreateTime: string): Promise<void>;
   findPropertiesByPropertyId(
     operatorId: string,
     propertyId: string,

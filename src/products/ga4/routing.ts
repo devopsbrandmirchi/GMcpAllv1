@@ -2,7 +2,7 @@ import type { OAuth2Client } from "google-auth-library";
 import { AppError } from "@/lib/errors";
 import { getOperatorContext, getSessionId } from "@/lib/request-context";
 import { getAuthorizedClientForConnection } from "@/providers/google/auth";
-import { discoverGa4Resources } from "@/products/ga4/api/admin";
+import { createAdminClient, fetchGa4PropertyCreateTime, discoverGa4Resources } from "@/products/ga4/api/admin";
 import { normalizePropertyId } from "@/lib/property-id";
 import { getAppStore } from "@/store/app-store";
 import type { Ga4PropertyRecord, GoogleConnectionRecord, SessionRecord } from "@/store/types";
@@ -61,6 +61,42 @@ export async function persistDiscoveredGa4Resources(
   );
 }
 
+export async function refreshOperatorPropertyCreationDates(operatorId: string, connectionId?: string) {
+  const store = getAppStore();
+  const connections = await requireActiveConnections(operatorId);
+  const targets = connections.filter((item) => !connectionId || item.connectionId === connectionId);
+  if (connectionId && targets.length === 0) {
+    throw new AppError("Google connection not found.", "connection_not_found", 404);
+  }
+  const result = { updated: 0, unavailable: 0, failed: 0 };
+  for (const connection of targets) {
+    const properties = await store.listProperties(operatorId, connection.connectionId);
+    if (properties.length === 0) continue;
+    let adminClient: ReturnType<typeof createAdminClient>;
+    try {
+      const auth = await getAuthorizedClientForConnection(operatorId, connection.connectionId);
+      adminClient = createAdminClient(auth);
+    } catch {
+      result.failed += properties.length;
+      continue;
+    }
+    for (const property of properties) {
+      try {
+        const date = await fetchGa4PropertyCreateTime(adminClient, property.propertyId);
+        if (date) {
+          await store.updatePropertyCreateTime(operatorId, connection.connectionId, property.propertyId, date);
+          result.updated++;
+        } else {
+          result.unavailable++;
+        }
+      } catch {
+        result.failed++;
+      }
+    }
+  }
+  return result;
+}
+
 export async function listOperatorProperties(operatorId: string, connectionId?: string) {
   const store = getAppStore();
   const [properties, connections] = await Promise.all([
@@ -79,6 +115,7 @@ export async function listOperatorProperties(operatorId: string, connectionId?: 
       propertyId: property.propertyId,
       propertyName: property.displayName,
       propertyType: property.propertyType,
+      propertyCreateTime: property.propertyCreateTime ?? null,
       isActive:
         session?.activePropertyId === property.propertyId &&
         session.activeConnectionId === property.connectionId,

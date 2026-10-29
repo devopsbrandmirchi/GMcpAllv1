@@ -166,10 +166,9 @@ export function createMemoryAppStore(): AppStore {
           accounts.delete(id);
         }
       }
-      for (const [id, property] of properties) {
-        if (property.connectionId === connectionId) {
-          properties.delete(id);
-        }
+      const previousProperties = new Map([...properties].filter(([, record]) => record.connectionId === connectionId));
+      for (const [id] of previousProperties) {
+        properties.delete(id);
       }
       for (const account of discoveredAccounts as DiscoveredAccount[]) {
         const id = resourceDocId(connectionId, account.ga4AccountId);
@@ -194,7 +193,8 @@ export function createMemoryAppStore(): AppStore {
           propertyId: property.propertyId,
           displayName: property.displayName,
           propertyType: property.propertyType,
-          createdAt: timestamp,
+          propertyCreateTime: property.propertyCreateTime ?? previousProperties.get(id)?.propertyCreateTime ?? null,
+          createdAt: previousProperties.get(id)?.createdAt ?? timestamp,
           updatedAt: timestamp,
           lastSyncedAt: timestamp,
         });
@@ -207,6 +207,15 @@ export function createMemoryAppStore(): AppStore {
           updatedAt: timestamp,
         });
       }
+    },
+
+    async updatePropertyCreateTime(operatorId, connectionId, propertyId, propertyCreateTime) {
+      const id = resourceDocId(connectionId, propertyId);
+      const record = properties.get(id);
+      if (!record || record.operatorId !== operatorId || record.connectionId !== connectionId) {
+        throw new AppError("Property not found for this operator and connection.", "property_not_found", 404);
+      }
+      properties.set(id, { ...record, propertyCreateTime, updatedAt: nowIso() });
     },
 
     async listAccounts(operatorId, connectionId) {

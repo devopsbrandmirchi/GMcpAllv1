@@ -220,6 +220,7 @@ export function createFirestoreAppStore(dbFactory?: () => Firestore): AppStore {
         firestore.collection(PROPERTIES).where("connectionId", "==", connectionId).get(),
       ]);
 
+      const previousProperties = new Map(existingProperties.docs.map((doc) => [doc.id, doc.data() as Ga4PropertyRecord]));
       const batch = firestore.batch();
       for (const doc of existingAccounts.docs) {
         batch.delete(doc.ref);
@@ -251,7 +252,8 @@ export function createFirestoreAppStore(dbFactory?: () => Firestore): AppStore {
           propertyId: property.propertyId,
           displayName: property.displayName,
           propertyType: property.propertyType,
-          createdAt: timestamp,
+          propertyCreateTime: property.propertyCreateTime ?? previousProperties.get(id)?.propertyCreateTime ?? null,
+          createdAt: previousProperties.get(id)?.createdAt ?? timestamp,
           updatedAt: timestamp,
           lastSyncedAt: timestamp,
         };
@@ -263,6 +265,18 @@ export function createFirestoreAppStore(dbFactory?: () => Firestore): AppStore {
         { merge: true },
       );
       await batch.commit();
+    },
+
+    async updatePropertyCreateTime(operatorId, connectionId, propertyId, propertyCreateTime) {
+      const ref = db().collection(PROPERTIES).doc(resourceDocId(connectionId, propertyId));
+      await db().runTransaction(async (tx) => {
+        const snapshot = await tx.get(ref);
+        const record = snapshot.data() as Ga4PropertyRecord | undefined;
+        if (!record || record.operatorId !== operatorId || record.connectionId !== connectionId) {
+          throw new AppError("Property not found for this operator and connection.", "property_not_found", 404);
+        }
+        tx.update(ref, { propertyCreateTime, updatedAt: nowIso() });
+      });
     },
 
     async listAccounts(operatorId, connectionId) {
